@@ -22,6 +22,7 @@ public class FrmCancelacion extends JDialog {
     private static final Color VERDE = new Color(0x15803D);
 
     private JTextField txtPNR;
+    private JTextField txtApellido; // NUEVO CAMPO RF-21
     private JButton btnBuscar;
     private JButton btnCancelarTiquete;
     private JButton btnCerrar;
@@ -38,7 +39,7 @@ public class FrmCancelacion extends JDialog {
     }
 
     private void initComponents() {
-        setSize(540, 620);
+        setSize(540, 660); // Ajusté un poco el alto para que quepa el nuevo campo
         setLayout(new BorderLayout());
         getContentPane().setBackground(Color.WHITE);
 
@@ -66,6 +67,7 @@ public class FrmCancelacion extends JDialog {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
+        // FILA 0: PNR
         JLabel lblPNR = new JLabel("Ingrese su PNR:");
         lblPNR.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lblPNR.setForeground(TEXTO);
@@ -84,6 +86,21 @@ public class FrmCancelacion extends JDialog {
         btnBuscar.setPreferredSize(new Dimension(110, 36));
         gbc.gridx = 2; gbc.weightx = 0;
         panelBusqueda.add(btnBuscar, gbc);
+
+        // FILA 1: APELLIDO (RF-21)
+        JLabel lblApellido = new JLabel("Apellido del Titular:");
+        lblApellido.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblApellido.setForeground(TEXTO);
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
+        panelBusqueda.add(lblApellido, gbc);
+
+        txtApellido = new JTextField(15);
+        txtApellido.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtApellido.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDE),
+                new EmptyBorder(6, 10, 6, 10)));
+        gbc.gridx = 1; gbc.gridwidth = 2; gbc.weightx = 1.0;
+        panelBusqueda.add(txtApellido, gbc);
 
         contenido.add(panelBusqueda, BorderLayout.NORTH);
 
@@ -115,16 +132,26 @@ public class FrmCancelacion extends JDialog {
 
         btnBuscar.addActionListener(e -> buscarReserva());
         txtPNR.addActionListener(e -> buscarReserva());
+        txtApellido.addActionListener(e -> buscarReserva()); // Enter en apellido también busca
         btnCancelarTiquete.addActionListener(e -> confirmarCancelacion());
         btnCerrar.addActionListener(e -> dispose());
     }
 
     private void buscarReserva() {
         String pnr = txtPNR.getText().trim().toUpperCase();
+        String apellido = txtApellido.getText().trim();
 
-        if (pnr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar un PNR.",
-                    "Campo vacío", JOptionPane.WARNING_MESSAGE);
+        if (pnr.isEmpty() || apellido.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe ingresar el PNR y el apellido del titular.",
+                    "Campos vacíos", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // RF-21: Validar seguridad (PNR + Apellido)
+        if (!reservaService.consultarReservaSegura(pnr, apellido)) {
+            JOptionPane.showMessageDialog(this, "El código PNR o el apellido no coinciden con nuestra base de datos.",
+                    "Error de Seguridad", JOptionPane.ERROR_MESSAGE);
+            limpiarInfo();
             return;
         }
 
@@ -297,6 +324,7 @@ public class FrmCancelacion extends JDialog {
                     "Cancelación exitosa", JOptionPane.INFORMATION_MESSAGE);
             limpiarInfo();
             txtPNR.setText("");
+            txtApellido.setText("");
         } else {
             JOptionPane.showMessageDialog(this, mensaje,
                     "Error", JOptionPane.ERROR_MESSAGE);

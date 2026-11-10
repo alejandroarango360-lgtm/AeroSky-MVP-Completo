@@ -38,7 +38,7 @@ public class FrmPrincipal extends JFrame {
     private JTextField txtFechaRegreso;
     private JCheckBox chkIdaVuelta;
     private JSpinner spnAdultos;
-    private JSpinner spnNinos; // Ahora "Jóvenes"
+    private JSpinner spnNinos;
     private JSpinner spnInfantes;
     private JComboBox<String> cmbClase;
 
@@ -60,7 +60,6 @@ public class FrmPrincipal extends JFrame {
     private List<Vuelo> vuelosIdaCache = new ArrayList<>();
     private List<Vuelo> vuelosRegresoCache = new ArrayList<>();
 
-    // Lista maestra de la vista actual (a la que se aplican filtros/orden)
     private List<Vuelo> vuelosActuales = new ArrayList<>();
 
     // ===== Tabla y detalles =====
@@ -79,11 +78,10 @@ public class FrmPrincipal extends JFrame {
     public FrmPrincipal() {
         vueloDAO = new VueloDAO();
         
-        // === LIMPIEZA AUTOMÁTICA DE RESERVAS HUÉRFANAS ===
         ReservaService rs = new ReservaService();
         int limpiadas = rs.limpiarReservasHuerfanas(15);
         if (limpiadas > 0) {
-            System.out.println("Sistema: Se expiraron " + limpiadas + " reservas huérfanas (más de 15 min en Pendiente_Pago).");
+            System.out.println("Sistema: Se expiraron " + limpiadas + " reservas huérfanas.");
         }
 
         initComponents();
@@ -180,7 +178,7 @@ public class FrmPrincipal extends JFrame {
         txtFechaRegreso.setToolTipText("Formato: YYYY-MM-DD (posterior o igual a la ida)");
         panelBusqueda.add(txtFechaRegreso, gbc);
 
-        // Fila 3: pasajeros y clase (RANGOS ACTUALIZADOS)
+        // Fila 3: pasajeros y clase
         gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
         panelBusqueda.add(crearLabel("Adultos (18+):"), gbc);
         gbc.gridx = 1; gbc.weightx = 0;
@@ -420,7 +418,9 @@ public class FrmPrincipal extends JFrame {
         btnComprar.addActionListener(e -> manejarBotonPrincipal());
         btnVolverIda.addActionListener(e -> volverSeleccionIda());
 
-        btnAdmin.addActionListener(e -> new FrmAdmin().setVisible(true));
+        // CAMBIO AQUÍ: Se abre el Login en lugar del Admin directo
+        btnAdmin.addActionListener(e -> new FrmLogin(this).setVisible(true));
+        
         btnCancelar.addActionListener(e -> {
             FrmCancelacion fc = new FrmCancelacion(this);
             fc.setVisible(true);
@@ -548,7 +548,6 @@ public class FrmPrincipal extends JFrame {
             return;
         }
 
-        // Si es ida y vuelta, validar la fecha de regreso
         if (chkIdaVuelta.isSelected()) {
             String fechaRegreso = txtFechaRegreso.getText().trim();
             if (fechaRegreso.isEmpty()) {
@@ -579,7 +578,6 @@ public class FrmPrincipal extends JFrame {
         int infantes = (int) spnInfantes.getValue();
         String clase = (String) cmbClase.getSelectedItem();
 
-        // Resetear flujo RF-05 al volver a buscar
         vueloIdaSeleccionado = null;
         faseSeleccionRegreso = false;
         vuelosRegresoCache.clear();
@@ -628,7 +626,6 @@ public class FrmPrincipal extends JFrame {
         }
     }
 
-    // Muestra en la tabla una lista (guardándola como la vista actual)
     private void mostrarLista(List<Vuelo> lista) {
         this.vuelosActuales = new ArrayList<>(lista);
         aplicarOrdenYFiltros();
@@ -641,7 +638,6 @@ public class FrmPrincipal extends JFrame {
 
         List<Vuelo> lista = new ArrayList<>(vuelosActuales);
 
-        // Filtro por escalas
         String filtroEscalas = (String) cbFiltroEscalas.getSelectedItem();
         if (filtroEscalas != null) {
             switch (filtroEscalas) {
@@ -657,7 +653,6 @@ public class FrmPrincipal extends JFrame {
             }
         }
 
-        // Filtro por horario
         String filtroHorario = (String) cbFiltroHorario.getSelectedItem();
         if (filtroHorario != null && !"Todos".equals(filtroHorario)) {
             lista.removeIf(v -> {
@@ -673,7 +668,6 @@ public class FrmPrincipal extends JFrame {
             });
         }
 
-        // Filtro por precio máximo
         String precioStr = txtPrecioMax.getText().trim()
                 .replace(".", "").replace(",", "").replace("$", "").replace(" ", "");
         if (!precioStr.isEmpty()) {
@@ -683,7 +677,6 @@ public class FrmPrincipal extends JFrame {
             } catch (NumberFormatException ignored) {}
         }
 
-        // Ordenamiento
         String criterio = (String) cbOrden.getSelectedItem();
         if (criterio != null) {
             switch (criterio) {
@@ -705,7 +698,6 @@ public class FrmPrincipal extends JFrame {
             }
         }
 
-        // Volcar a la tabla
         for (Vuelo v : lista) {
             modeloTabla.addRow(new Object[]{
                     v.getIdVuelo(),
@@ -722,7 +714,6 @@ public class FrmPrincipal extends JFrame {
             });
         }
 
-        // Estado informativo
         if (lblEstadoResultados != null) {
             int total = vuelosActuales.size();
             int mostrados = lista.size();
@@ -773,8 +764,6 @@ public class FrmPrincipal extends JFrame {
         int infantes = (int) spnInfantes.getValue();
         String clase = (String) cmbClase.getSelectedItem();
 
-        // CA-07: buscar regresos compatibles (destino→origen, fecha regreso,
-        // salida >= llegada de la ida)
         List<Vuelo> regresos = vueloDAO.buscarVuelosRegresoCompatibles(
                 destino, origen, fechaRegreso, ida.getFechaLlegada(),
                 adultos, ninos, infantes, clase);
@@ -857,7 +846,6 @@ public class FrmPrincipal extends JFrame {
                                       adultos, ninos, infantes);
         fc.setVisible(true);
 
-        // Resetear flujo tras la compra
         if (chkIdaVuelta.isSelected()) {
             volverSeleccionIda();
         }

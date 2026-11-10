@@ -2,6 +2,7 @@ package com.aircolombia.prototipo.view;
 
 import com.aircolombia.prototipo.dao.VueloDAO;
 import com.aircolombia.prototipo.model.Vuelo;
+import com.aircolombia.prototipo.service.ReservaService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -31,10 +32,16 @@ public class FrmAdmin extends JFrame {
     private JButton btnEditar;
     private JButton btnEliminar;
     private JButton btnRefrescar;
+    private JButton btnModificarVuelo; 
+    private JButton btnNotificarCancelacion; 
+    private JButton btnReportes; // NUEVO BOTÓN
+    
     private VueloDAO vueloDAO;
+    private ReservaService reservaService;
 
     public FrmAdmin() {
         vueloDAO = new VueloDAO();
+        reservaService = new ReservaService();
         initComponents();
         setLocationRelativeTo(null);
         cargarVuelos();
@@ -43,7 +50,7 @@ public class FrmAdmin extends JFrame {
     private void initComponents() {
         setTitle("AeroSky - Módulo Administrador");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(1100, 620);
+        setSize(1250, 650); // Un poco más ancho para que quepan todos los botones
         setLayout(new BorderLayout());
         getContentPane().setBackground(FONDO);
 
@@ -60,7 +67,7 @@ public class FrmAdmin extends JFrame {
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblTitulo.setForeground(Color.WHITE);
 
-        JLabel lblSubtitulo = new JLabel("Gestión de rutas, frecuencias y vuelos");
+        JLabel lblSubtitulo = new JLabel("Gestión de rutas, frecuencias, vuelos y operaciones");
         lblSubtitulo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblSubtitulo.setForeground(new Color(0xF5D6B8));
 
@@ -93,17 +100,35 @@ public class FrmAdmin extends JFrame {
         JPanel panelBotones = new JPanel(new BorderLayout());
         panelBotones.setBackground(FONDO);
 
-        JPanel panelIzq = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JPanel panelIzq = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         panelIzq.setBackground(FONDO);
+        
         btnNuevo = crearBoton("+ Nuevo Vuelo", PRINCIPAL, PRINCIPAL_HOVER, Color.WHITE);
-        btnNuevo.setPreferredSize(new Dimension(150, 40));
+        btnNuevo.setPreferredSize(new Dimension(140, 40));
+        
         btnEditar = crearBoton("Editar", GRIS_BTN, GRIS_BTN_HOVER, TEXTO);
-        btnEditar.setPreferredSize(new Dimension(110, 40));
+        btnEditar.setPreferredSize(new Dimension(90, 40));
+        
         btnEliminar = crearBoton("Eliminar", ROJO_PELIGRO, ROJO_PELIGRO_HOVER, Color.WHITE);
-        btnEliminar.setPreferredSize(new Dimension(110, 40));
+        btnEliminar.setPreferredSize(new Dimension(90, 40));
+        
+        btnModificarVuelo = crearBoton("Modificar Vuelo (Cliente)", new Color(0x15803D), new Color(0x166534), Color.WHITE);
+        btnModificarVuelo.setPreferredSize(new Dimension(190, 40));
+        
+        btnNotificarCancelacion = crearBoton("Notificar Operación", new Color(0x6B21A8), new Color(0x581C87), Color.WHITE);
+        btnNotificarCancelacion.setPreferredSize(new Dimension(160, 40));
+
+        // BOTÓN DE REPORTES
+        btnReportes = crearBoton("Ver Reportes (Gerencia)", new Color(0x0369A1), new Color(0x075985), Color.WHITE);
+        btnReportes.setPreferredSize(new Dimension(180, 40));
+
         panelIzq.add(btnNuevo);
         panelIzq.add(btnEditar);
         panelIzq.add(btnEliminar);
+        panelIzq.add(Box.createHorizontalStrut(10));
+        panelIzq.add(btnModificarVuelo);
+        panelIzq.add(btnNotificarCancelacion);
+        panelIzq.add(btnReportes);
 
         JPanel panelDer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         panelDer.setBackground(FONDO);
@@ -124,6 +149,33 @@ public class FrmAdmin extends JFrame {
             if (seleccionado != null) abrirEditor(seleccionado);
         });
         btnEliminar.addActionListener(e -> eliminarSeleccionado());
+        
+        btnModificarVuelo.addActionListener(e -> new FrmModificarVuelo(this).setVisible(true));
+        btnNotificarCancelacion.addActionListener(e -> notificarCancelacionVuelo());
+        
+        // ACCIÓN DEL BOTÓN DE REPORTES
+        btnReportes.addActionListener(e -> new FrmReportes().setVisible(true));
+    }
+
+    private void notificarCancelacionVuelo() {
+        String idStr = JOptionPane.showInputDialog(this, "Ingrese el ID del vuelo afectado por la operación:", "Notificar Cancelación", JOptionPane.WARNING_MESSAGE);
+        if (idStr == null || idStr.trim().isEmpty()) return;
+
+        String motivo = JOptionPane.showInputDialog(this, "Ingrese el motivo (Ej: Clima, Fallas técnicas, etc.):");
+        if (motivo == null || motivo.trim().isEmpty()) return;
+
+        try {
+            int idVuelo = Integer.parseInt(idStr.trim());
+            int notificados = reservaService.notificarCancelacionVuelo(idVuelo, motivo.trim());
+            
+            if (notificados > 0) {
+                JOptionPane.showMessageDialog(this, "Se han enviado " + notificados + " correos a los pasajeros afectados.", "Notificación Exitosa", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "No se encontraron pasajeros confirmados en ese vuelo o no tienen correo registrado.", "Sin Pasajeros", JOptionPane.WARNING_MESSAGE);
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "El ID del vuelo debe ser un número.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void cargarVuelos() {
@@ -190,7 +242,7 @@ public class FrmAdmin extends JFrame {
         JButton boton = new JButton(texto);
         boton.setBackground(normal);
         boton.setForeground(fg);
-        boton.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        boton.setFont(new Font("Segoe UI", Font.BOLD, 12));
         boton.setFocusPainted(false);
         boton.setBorderPainted(false);
         boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
