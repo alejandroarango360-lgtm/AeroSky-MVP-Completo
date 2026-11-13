@@ -107,7 +107,7 @@ Corre el archivo FrmPrincipal.java (o FrmLogin.java si aplicaste la mejora de se
 👥 Autores
 Alejandro Arango
 
-(Nota: Ajusta los nombres si es necesario).
+
 
 📄 Licencia
 Proyecto académico — Fundación Universitaria Konrad Lorenz. Uso educativo. Todos los derechos reservados a los autores.
