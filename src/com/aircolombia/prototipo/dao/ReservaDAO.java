@@ -429,4 +429,47 @@ public class ReservaDAO {
             return false;
         }
     }
+        // ---------- 2FA CANCELACIÓN: GUARDAR TOKEN ----------
+    public boolean guardarTokenCancelacion(String pnr, String token) {
+        String sql = "UPDATE reserva SET token_cancelacion = ?, token_cancelacion_enviado_en = NOW() WHERE codigo_pnr = ?";
+        try (Connection conn = Conexion.getConexion();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, token);
+            pstmt.setString(2, pnr);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.out.println("Error guardarTokenCancelacion: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ---------- 2FA CANCELACIÓN: VERIFICAR TOKEN ----------
+    public boolean verificarTokenCancelacion(String pnr, String token) {
+        String sql = "SELECT token_cancelacion FROM reserva WHERE codigo_pnr = ?";
+        try (Connection conn = Conexion.getConexion();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, pnr);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                String tokenGuardado = rs.getString("token_cancelacion");
+                return tokenGuardado != null && tokenGuardado.equals(token);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error verificarTokenCancelacion: " + e.getMessage());
+        }
+        return false;
+    }
+
+    // ---------- 2FA CANCELACIÓN: LIMPIAR TOKEN ----------
+    public boolean limpiarTokenCancelacion(String pnr) {
+        String sql = "UPDATE reserva SET token_cancelacion = NULL, token_cancelacion_enviado_en = NULL WHERE codigo_pnr = ?";
+        try (Connection conn = Conexion.getConexion();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, pnr);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.out.println("Error limpiarTokenCancelacion: " + e.getMessage());
+            return false;
+        }
+    }
 }

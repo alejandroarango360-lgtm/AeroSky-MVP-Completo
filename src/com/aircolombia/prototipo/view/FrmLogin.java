@@ -1,96 +1,94 @@
 package com.aircolombia.prototipo.view;
 
+import com.aircolombia.prototipo.model.Usuario;
 import com.aircolombia.prototipo.service.SeguridadService;
 import com.aircolombia.prototipo.service.SeguridadService.ResultadoLogin;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class FrmLogin extends JDialog {
-    private JTextField txtUser;
+    private JTextField txtUser, txt2FA;
     private JPasswordField txtPass;
-    private JTextField txt2FA;
-    private JButton btnLogin;
+    private JButton btnLogin, btnIrRegistro;
     private SeguridadService service = new SeguridadService();
     private String currentUser;
     private boolean paso2 = false;
+    private Usuario usuarioLogueado = null; 
+    private String requiredRole; // NUEVO: Para validar si es ADMIN o CLIENTE
 
-    // ESTE ES EL CONSTRUCTOR QUE FALTABA (recibe la ventana padre)
-    public FrmLogin(JFrame padre) {
-        super(padre, "Acceso Administrativo (RF-26 al RF-29)", true);
-        setSize(380, 300);
-        setLocationRelativeTo(padre);
+    public FrmLogin(JFrame padre, String requiredRole) {
+        super(padre, "Acceso al Sistema - AeroSky", true);
+        this.requiredRole = requiredRole;
+        
+        setSize(380, 350);
+        setLocationRelativeTo(null);
         setLayout(new GridBagLayout());
         getContentPane().setBackground(Color.WHITE);
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        JLabel lblUser = new JLabel("Usuario:");
-        gbc.gridx = 0; gbc.gridy = 0;
-        add(lblUser, gbc);
+        gbc.insets = new Insets(10, 10, 10, 10); gbc.fill = GridBagConstraints.HORIZONTAL;
 
         txtUser = new JTextField(15);
-        gbc.gridx = 1;
-        add(txtUser, gbc);
-
-        JLabel lblPass = new JLabel("Contraseña:");
-        gbc.gridx = 0; gbc.gridy = 1;
-        add(lblPass, gbc);
-
         txtPass = new JPasswordField(15);
-        gbc.gridx = 1;
-        add(txtPass, gbc);
-
-        JLabel lbl2FA = new JLabel("Código 2FA:");
-        gbc.gridx = 0; gbc.gridy = 2;
-        add(lbl2FA, gbc);
-
         txt2FA = new JTextField(15);
-        txt2FA.setEnabled(false); // Deshabilitado hasta pasar el paso 1
-        gbc.gridx = 1;
-        add(txt2FA, gbc);
-
+        txt2FA.setEnabled(false);
+        
         btnLogin = new JButton("Ingresar");
-        btnLogin.setBackground(new Color(0xC8102E));
+        btnLogin.setBackground(new Color(0xC8102E)); 
         btnLogin.setForeground(Color.WHITE);
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
-        add(btnLogin, gbc);
+        
+        btnIrRegistro = new JButton("Crear Cuenta Nueva");
+        btnIrRegistro.setContentAreaFilled(false);
+        btnIrRegistro.setBorderPainted(false);
+        btnIrRegistro.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnIrRegistro.setForeground(new Color(0x0369A1));
+
+        gbc.gridx=0; gbc.gridy=0; add(new JLabel("Usuario:"), gbc);
+        gbc.gridx=1; add(txtUser, gbc);
+        gbc.gridx=0; gbc.gridy=1; add(new JLabel("Contraseña:"), gbc);
+        gbc.gridx=1; add(txtPass, gbc);
+        gbc.gridx=0; gbc.gridy=2; add(new JLabel("Código 2FA:"), gbc);
+        gbc.gridx=1; add(txt2FA, gbc);
+        gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=2; add(btnLogin, gbc);
+        gbc.gridy=4; add(btnIrRegistro, gbc);
 
         btnLogin.addActionListener(e -> procesar());
+        btnIrRegistro.addActionListener(e -> new FrmRegistro(this).setVisible(true));
+        
+        // Si es la ventana principal (padre == null) y se cierra, cerramos todo el sistema
+        if (padre == null) {
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    System.exit(0);
+                }
+            });
+        }
     }
+    
+    public Usuario getUsuarioLogueado() { return usuarioLogueado; }
 
     private void procesar() {
         if (!paso2) {
-            // PASO 1
-            String u = txtUser.getText().trim();
-            String p = new String(txtPass.getPassword());
-            ResultadoLogin res = service.loginPaso1(u, p);
-
+            ResultadoLogin res = service.loginPaso1(txtUser.getText().trim(), new String(txtPass.getPassword()), requiredRole);
+            JOptionPane.showMessageDialog(this, res.mensaje, res.exito ? "Info" : "Error", res.exito ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+            
             if (res.exito) {
-                JOptionPane.showMessageDialog(this, res.mensaje);
-                currentUser = u;
+                currentUser = txtUser.getText().trim();
                 paso2 = true;
-                txtUser.setEnabled(false);
-                txtPass.setEnabled(false);
-                txt2FA.setEnabled(true);
-                txt2FA.requestFocus();
-                btnLogin.setText("Verificar Código");
-            } else {
-                JOptionPane.showMessageDialog(this, res.mensaje, "Error", JOptionPane.ERROR_MESSAGE);
+                txtUser.setEnabled(false); txtPass.setEnabled(false);
+                txt2FA.setEnabled(true); txt2FA.requestFocus();
+                btnLogin.setText("Verificar Código 2FA");
             }
         } else {
-            // PASO 2
-            String token = txt2FA.getText().trim();
-            ResultadoLogin res = service.loginPaso2(currentUser, token);
-
+            ResultadoLogin res = service.loginPaso2(currentUser, txt2FA.getText().trim());
+            JOptionPane.showMessageDialog(this, res.mensaje, res.exito ? "Éxito" : "Error", res.exito ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+            
             if (res.exito) {
-                JOptionPane.showMessageDialog(this, "Bienvenido al sistema.");
-                dispose();
-                // Abrir el panel de administrador
-                new FrmAdmin().setVisible(true); 
-            } else {
-                JOptionPane.showMessageDialog(this, res.mensaje, "Error", JOptionPane.ERROR_MESSAGE);
+                usuarioLogueado = res.usuario;
+                dispose(); 
             }
         }
     }

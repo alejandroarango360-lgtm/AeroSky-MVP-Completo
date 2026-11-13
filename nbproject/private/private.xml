@@ -23,6 +23,14 @@
             <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/view/FrmVerificarPago.java</file>
             <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/utils/EmailService.java</file>
             <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/view/FrmAuditoria.java</file>
+            <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/model/Usuario.java</file>
+            <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/dao/ReportesDAO.java</file>
+            <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/dao/UsuarioDAO.java</file>
+            <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/service/ReportesService.java</file>
+            <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/service/SeguridadService.java</file>
+            <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/view/FrmLogin.java</file>
+            <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/view/FrmModificarVuelo.java</file>
+            <file>file:/C:/Users/aleja/OneDrive/Documentos/NetBeansProjects/AirColombiaPrototipo/src/com/aircolombia/prototipo/view/FrmReportes.java</file>
         </group>
     </open-files>
 </project-private>

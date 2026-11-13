@@ -2,6 +2,7 @@ package com.aircolombia.prototipo.view;
 
 import com.aircolombia.prototipo.dao.VueloDAO;
 import com.aircolombia.prototipo.model.Vuelo;
+import com.aircolombia.prototipo.model.Usuario; 
 import com.aircolombia.prototipo.service.ReservaService;
 
 import javax.swing.*;
@@ -73,6 +74,8 @@ public class FrmPrincipal extends JFrame {
     private JButton btnComprar;
     private JButton btnAdmin;
     private JButton btnCancelar;
+    private JButton btnConsultar;
+    private JButton btnCerrarSesion; // NUEVO BOTÓN
     private VueloDAO vueloDAO;
 
     public FrmPrincipal() {
@@ -300,7 +303,7 @@ public class FrmPrincipal extends JFrame {
         btnVolverIda.setVisible(false);
         panelFase.add(btnVolverIda, BorderLayout.EAST);
 
-        // ---------- NORTH: búsqueda + filtros + fase ----------
+        // ---------- NORTH ----------
         JPanel panelNorte = new JPanel();
         panelNorte.setLayout(new BoxLayout(panelNorte, BoxLayout.Y_AXIS));
         panelNorte.setBackground(FONDO);
@@ -311,7 +314,7 @@ public class FrmPrincipal extends JFrame {
         panelNorte.add(panelFase);
         contenedor.add(panelNorte, BorderLayout.NORTH);
 
-        // ---------- PANEL CENTRAL: TABLA + DETALLES ----------
+        // ---------- PANEL CENTRAL ----------
         JPanel panelCentro = new JPanel(new BorderLayout(0, 8));
         panelCentro.setBackground(FONDO);
 
@@ -374,8 +377,21 @@ public class FrmPrincipal extends JFrame {
         panelIzq.add(btnAdmin);
 
         btnCancelar = crearBotonSecundario("Cancelar Tiquete");
-        btnCancelar.setPreferredSize(new Dimension(180, 42));
+        btnCancelar.setPreferredSize(new Dimension(160, 42));
         panelIzq.add(btnCancelar);
+
+        btnConsultar = crearBotonSecundario("Consultar Mi Tiquete");
+        btnConsultar.setPreferredSize(new Dimension(180, 42));
+        panelIzq.add(btnConsultar);
+
+        // BOTÓN CERRAR SESIÓN
+        btnCerrarSesion = crearBoton("Cerrar Sesión", new Color(0xDC2626), new Color(0xB91C1C), Color.WHITE);
+        btnCerrarSesion.setPreferredSize(new Dimension(130, 42));
+        btnCerrarSesion.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnCerrarSesion.setFocusPainted(false);
+        btnCerrarSesion.setBorderPainted(false);
+        btnCerrarSesion.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        panelIzq.add(btnCerrarSesion);
 
         JPanel panelDer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         panelDer.setBackground(FONDO);
@@ -417,13 +433,36 @@ public class FrmPrincipal extends JFrame {
         btnBuscar.addActionListener(e -> buscarVuelos());
         btnComprar.addActionListener(e -> manejarBotonPrincipal());
         btnVolverIda.addActionListener(e -> volverSeleccionIda());
-
-        // CAMBIO AQUÍ: Se abre el Login en lugar del Admin directo
-        btnAdmin.addActionListener(e -> new FrmLogin(this).setVisible(true));
         
-        btnCancelar.addActionListener(e -> {
-            FrmCancelacion fc = new FrmCancelacion(this);
-            fc.setVisible(true);
+        // EVENTO DEL BOTÓN ADMIN
+        btnAdmin.addActionListener(e -> {
+            FrmLogin login = new FrmLogin(this, "ADMIN"); // Le decimos que SOLO permita ADMIN
+            login.setVisible(true);
+            
+            Usuario user = login.getUsuarioLogueado();
+            if (user != null) {
+                // Si login no fue nulo, es porque es ADMIN (el login ya validó)
+                new FrmAdmin().setVisible(true);
+            }
+        });
+        
+        btnCancelar.addActionListener(e -> new FrmCancelacion(this).setVisible(true));
+        btnConsultar.addActionListener(e -> new FrmConsultarTiquete(this).setVisible(true));
+
+        // EVENTO CERRAR SESIÓN
+        btnCerrarSesion.addActionListener(e -> {
+            this.dispose(); // Cierra la ventana actual
+            FrmLogin login = new FrmLogin(null, null);
+            login.setVisible(true);
+            if (login.getUsuarioLogueado() != null) {
+                if ("ADMIN".equalsIgnoreCase(login.getUsuarioLogueado().getRol())) {
+                    new FrmAdmin().setVisible(true);
+                } else {
+                    new FrmPrincipal().setVisible(true);
+                }
+            } else {
+                System.exit(0); // Si cancela el login, cierra la app
+            }
         });
 
         // RF-04: listeners de orden y filtros
@@ -446,19 +485,16 @@ public class FrmPrincipal extends JFrame {
         ajustarLimitesPasajeros();
     }
 
-    // ============ AJUSTES DE PASAJEROS ============
+    // ============ (AQUÍ VAN TODOS LOS DEMÁS MÉTODOS: ajustarLimitesPasajeros, crearLabel, buscarVuelos, etc... 
+    // Se mantienen exactamente iguales a tu código actual. Solo copia el archivo completo original y reemplaza la clase). ============
+    
     private void ajustarLimitesPasajeros() {
         int adultos = (int) spnAdultos.getValue();
         int maxNinos = Math.min(9 - adultos, 8);
-        spnNinos.setModel(new SpinnerNumberModel(
-                Math.min((int) spnNinos.getValue(), maxNinos),
-                0, maxNinos, 1));
-        spnInfantes.setModel(new SpinnerNumberModel(
-                Math.min((int) spnInfantes.getValue(), adultos),
-                0, adultos, 1));
+        spnNinos.setModel(new SpinnerNumberModel(Math.min((int) spnNinos.getValue(), maxNinos), 0, maxNinos, 1));
+        spnInfantes.setModel(new SpinnerNumberModel(Math.min((int) spnInfantes.getValue(), adultos), 0, adultos, 1));
     }
 
-    // ============ HELPERS ============
     private JLabel crearLabel(String t) {
         JLabel l = new JLabel(t);
         l.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -468,9 +504,7 @@ public class FrmPrincipal extends JFrame {
 
     private void estilizarCampo(JTextField c) {
         c.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        c.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDE),
-                new EmptyBorder(5, 8, 5, 8)));
+        c.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BORDE), new EmptyBorder(5, 8, 5, 8)));
     }
 
     private void estilizarCombo(JComboBox<String> c) {
@@ -527,48 +561,37 @@ public class FrmPrincipal extends JFrame {
         }
     }
 
-    // ============ BUSCAR ============
     private void buscarVuelos() {
         String origen = (String) cmbOrigen.getSelectedItem();
         String destino = (String) cmbDestino.getSelectedItem();
         String fechaIda = txtFechaIda.getText().trim();
 
         if (origen == null || destino == null || origen.equals(destino)) {
-            JOptionPane.showMessageDialog(this,
-                    "Debe seleccionar origen y destino diferentes.",
-                    "Datos inválidos", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Debe seleccionar origen y destino diferentes.", "Datos inválidos", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         try { java.time.LocalDate.parse(fechaIda); }
         catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Fecha de ida inválida. Use formato YYYY-MM-DD.",
-                    "Fecha inválida", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Fecha de ida inválida. Use formato YYYY-MM-DD.", "Fecha inválida", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         if (chkIdaVuelta.isSelected()) {
             String fechaRegreso = txtFechaRegreso.getText().trim();
             if (fechaRegreso.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Debe ingresar la fecha de regreso.",
-                        "Fecha faltante", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Debe ingresar la fecha de regreso.", "Fecha faltante", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             try {
                 java.time.LocalDate fr = java.time.LocalDate.parse(fechaRegreso);
                 java.time.LocalDate fi = java.time.LocalDate.parse(fechaIda);
                 if (fr.isBefore(fi)) {
-                    JOptionPane.showMessageDialog(this,
-                            "La fecha de regreso no puede ser anterior a la fecha de ida.",
-                            "Fechas inválidas", JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "La fecha de regreso no puede ser anterior a la fecha de ida.", "Fechas inválidas", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this,
-                        "Fecha de regreso inválida. Use formato YYYY-MM-DD.",
-                        "Fecha inválida", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Fecha de regreso inválida. Use formato YYYY-MM-DD.", "Fecha inválida", JOptionPane.WARNING_MESSAGE);
                 return;
             }
         }
@@ -592,28 +615,16 @@ public class FrmPrincipal extends JFrame {
         vuelosActuales.clear();
         mostrarDetalles();
 
-        List<Vuelo> vuelos = vueloDAO.buscarVuelosPorFecha(
-                origen, destino, fechaIda, adultos, ninos, infantes, clase);
+        List<Vuelo> vuelos = vueloDAO.buscarVuelosPorFecha(origen, destino, fechaIda, adultos, ninos, infantes, clase);
 
         if (vuelos.isEmpty()) {
-            List<Vuelo> cercanos = vueloDAO.buscarVuelosCercanos(
-                    origen, destino, fechaIda, 3, adultos, ninos, infantes, clase);
-
+            List<Vuelo> cercanos = vueloDAO.buscarVuelosCercanos(origen, destino, fechaIda, 3, adultos, ninos, infantes, clase);
             if (cercanos.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "No hay vuelos disponibles ni en fechas cercanas (±3 días).",
-                        "Sin resultados", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "No hay vuelos disponibles ni en fechas cercanas (±3 días).", "Sin resultados", JOptionPane.INFORMATION_MESSAGE);
                 if (lblEstadoResultados != null) lblEstadoResultados.setText("");
                 return;
             }
-
-            int op = JOptionPane.showConfirmDialog(this,
-                    "No hay vuelos para el " + fechaIda + ".\n\n"
-                    + "Encontramos " + cercanos.size() + " vuelo(s) en fechas cercanas (±3 días).\n"
-                    + "¿Desea verlos?",
-                    "Sugerencias de fechas cercanas (FA1)",
-                    JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
-
+            int op = JOptionPane.showConfirmDialog(this, "No hay vuelos para el " + fechaIda + ".\n\nEncontramos " + cercanos.size() + " vuelo(s) en fechas cercanas (±3 días).\n¿Desea verlos?", "Sugerencias de fechas cercanas (FA1)", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
             if (op != JOptionPane.YES_OPTION) {
                 if (lblEstadoResultados != null) lblEstadoResultados.setText("");
                 return;
@@ -631,7 +642,6 @@ public class FrmPrincipal extends JFrame {
         aplicarOrdenYFiltros();
     }
 
-    // ============ RF-04: ORDENAMIENTO Y FILTROS ============
     private void aplicarOrdenYFiltros() {
         if (modeloTabla == null) return;
         modeloTabla.setRowCount(0);
@@ -641,15 +651,9 @@ public class FrmPrincipal extends JFrame {
         String filtroEscalas = (String) cbFiltroEscalas.getSelectedItem();
         if (filtroEscalas != null) {
             switch (filtroEscalas) {
-                case "Solo directos":
-                    lista.removeIf(v -> v.getEscalas() != 0);
-                    break;
-                case "1 escala":
-                    lista.removeIf(v -> v.getEscalas() != 1);
-                    break;
-                case "2 o más escalas":
-                    lista.removeIf(v -> v.getEscalas() < 2);
-                    break;
+                case "Solo directos": lista.removeIf(v -> v.getEscalas() != 0); break;
+                case "1 escala": lista.removeIf(v -> v.getEscalas() != 1); break;
+                case "2 o más escalas": lista.removeIf(v -> v.getEscalas() < 2); break;
             }
         }
 
@@ -660,16 +664,15 @@ public class FrmPrincipal extends JFrame {
                 if (h < 0) return true;
                 switch (filtroHorario) {
                     case "Madrugada (00-05)": return h >= 6;
-                    case "Mañana (06-11)":    return h < 6  || h >= 12;
-                    case "Tarde (12-17)":     return h < 12 || h >= 18;
-                    case "Noche (18-23)":     return h < 18;
+                    case "Mañana (06-11)": return h < 6 || h >= 12;
+                    case "Tarde (12-17)": return h < 12 || h >= 18;
+                    case "Noche (18-23)": return h < 18;
                 }
                 return false;
             });
         }
 
-        String precioStr = txtPrecioMax.getText().trim()
-                .replace(".", "").replace(",", "").replace("$", "").replace(" ", "");
+        String precioStr = txtPrecioMax.getText().trim().replace(".", "").replace(",", "").replace("$", "").replace(" ", "");
         if (!precioStr.isEmpty()) {
             try {
                 double max = Double.parseDouble(precioStr);
@@ -680,76 +683,43 @@ public class FrmPrincipal extends JFrame {
         String criterio = (String) cbOrden.getSelectedItem();
         if (criterio != null) {
             switch (criterio) {
-                case "Precio (menor a mayor)":
-                    lista.sort(Comparator.comparingDouble(Vuelo::getTarifaBase));
-                    break;
-                case "Precio (mayor a menor)":
-                    lista.sort(Comparator.comparingDouble(Vuelo::getTarifaBase).reversed());
-                    break;
-                case "Duración (menor a mayor)":
-                    lista.sort(Comparator.comparingLong(Vuelo::getDuracionMinutos));
-                    break;
-                case "Hora de salida (más temprano)":
-                    lista.sort(Comparator.comparingInt(Vuelo::getHoraSalida));
-                    break;
-                case "Escalas (menor a mayor)":
-                    lista.sort(Comparator.comparingInt(Vuelo::getEscalas));
-                    break;
+                case "Precio (menor a mayor)": lista.sort(Comparator.comparingDouble(Vuelo::getTarifaBase)); break;
+                case "Precio (mayor a menor)": lista.sort(Comparator.comparingDouble(Vuelo::getTarifaBase).reversed()); break;
+                case "Duración (menor a mayor)": lista.sort(Comparator.comparingLong(Vuelo::getDuracionMinutos)); break;
+                case "Hora de salida (más temprano)": lista.sort(Comparator.comparingInt(Vuelo::getHoraSalida)); break;
+                case "Escalas (menor a mayor)": lista.sort(Comparator.comparingInt(Vuelo::getEscalas)); break;
             }
         }
 
         for (Vuelo v : lista) {
             modeloTabla.addRow(new Object[]{
-                    v.getIdVuelo(),
-                    v.getNumeroVuelo(),
-                    v.getOrigenIata() + " (" + v.getOrigenCiudad() + ")",
-                    v.getDestinoIata() + " (" + v.getDestinoCiudad() + ")",
-                    v.getFechaSalida(),
-                    v.getFechaLlegada(),
-                    v.getDuracion(),
-                    v.getTextoEscalas(),
-                    v.getMatriculaAeronave(),
-                    "$ " + String.format("%,.0f", v.getTarifaBase()),
-                    v.getCuposDisponibles()
+                v.getIdVuelo(), v.getNumeroVuelo(), v.getOrigenIata() + " (" + v.getOrigenCiudad() + ")", v.getDestinoIata() + " (" + v.getDestinoCiudad() + ")",
+                v.getFechaSalida(), v.getFechaLlegada(), v.getDuracion(), v.getTextoEscalas(), v.getMatriculaAeronave(),
+                "$ " + String.format("%,.0f", v.getTarifaBase()), v.getCuposDisponibles()
             });
         }
 
         if (lblEstadoResultados != null) {
-            int total = vuelosActuales.size();
-            int mostrados = lista.size();
-            if (total == 0) {
-                lblEstadoResultados.setText("");
-            } else if (mostrados == total) {
-                lblEstadoResultados.setText("Mostrando " + total + " vuelo(s)");
-            } else {
-                lblEstadoResultados.setText("Mostrando " + mostrados + " de " + total + " vuelo(s)");
-            }
+            int total = vuelosActuales.size(); int mostrados = lista.size();
+            if (total == 0) lblEstadoResultados.setText("");
+            else if (mostrados == total) lblEstadoResultados.setText("Mostrando " + total + " vuelo(s)");
+            else lblEstadoResultados.setText("Mostrando " + mostrados + " de " + total + " vuelo(s)");
         }
     }
 
-    // ============ RF-05: FLUJO DE IDA Y VUELTA ============
     private void manejarBotonPrincipal() {
         int fila = tablaVuelos.getSelectedRow();
         if (fila == -1) {
-            JOptionPane.showMessageDialog(this,
-                    "Seleccione un vuelo de la tabla.",
-                    "Sin selección", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Seleccione un vuelo de la tabla.", "Sin selección", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        int idVueloFila = ((Number) modeloTabla.getValueAt(fila,
-                tablaVuelos.getColumnModel().getColumnIndex("ID"))).intValue();
-
+        int idVueloFila = ((Number) modeloTabla.getValueAt(fila, tablaVuelos.getColumnModel().getColumnIndex("ID"))).intValue();
         if (!chkIdaVuelta.isSelected()) {
             procesarCompra(idVueloFila, null);
             return;
         }
-
-        if (!faseSeleccionRegreso) {
-            seleccionarVueloIda(idVueloFila);
-        } else {
-            procesarCompra(vueloIdaSeleccionado.getIdVuelo(), idVueloFila);
-        }
+        if (!faseSeleccionRegreso) seleccionarVueloIda(idVueloFila);
+        else procesarCompra(vueloIdaSeleccionado.getIdVuelo(), idVueloFila);
     }
 
     private void seleccionarVueloIda(int idVueloIda) {
@@ -764,18 +734,10 @@ public class FrmPrincipal extends JFrame {
         int infantes = (int) spnInfantes.getValue();
         String clase = (String) cmbClase.getSelectedItem();
 
-        List<Vuelo> regresos = vueloDAO.buscarVuelosRegresoCompatibles(
-                destino, origen, fechaRegreso, ida.getFechaLlegada(),
-                adultos, ninos, infantes, clase);
+        List<Vuelo> regresos = vueloDAO.buscarVuelosRegresoCompatibles(destino, origen, fechaRegreso, ida.getFechaLlegada(), adultos, ninos, infantes, clase);
 
         if (regresos.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No hay vuelos de regreso compatibles.\n\n"
-                    + "El vuelo de ida (" + ida.getNumeroVuelo() + ") llega el "
-                    + ida.getFechaLlegada() + ".\n"
-                    + "Los vuelos de regreso deben despegar DESPUÉS de esa fecha/hora.\n\n"
-                    + "Intente con otra fecha de regreso.",
-                    "Sin regresos compatibles (CA-07)", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No hay vuelos de regreso compatibles.\n\nEl vuelo de ida (" + ida.getNumeroVuelo() + ") llega el " + ida.getFechaLlegada() + ".\nLos vuelos de regreso deben despegar DESPUÉS de esa fecha/hora.\n\nIntente con otra fecha de regreso.", "Sin regresos compatibles (CA-07)", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -784,11 +746,7 @@ public class FrmPrincipal extends JFrame {
         faseSeleccionRegreso = true;
 
         lblPasoInfo.setText("Paso 2 de 2: Seleccione el vuelo de regreso");
-        lblResumenIda.setText("<html><b>Ida:</b> " + ida.getNumeroVuelo()
-                + " · " + ida.getOrigenIata() + "→" + ida.getDestinoIata()
-                + " · " + ida.getFechaSalida()
-                + " &nbsp;→&nbsp; <b>Regreso:</b> " + destino + "→" + origen
-                + " · " + fechaRegreso + "</html>");
+        lblResumenIda.setText("<html><b>Ida:</b> " + ida.getNumeroVuelo() + " · " + ida.getOrigenIata() + "→" + ida.getDestinoIata() + " · " + ida.getFechaSalida() + " &nbsp;→&nbsp; <b>Regreso:</b> " + destino + "→" + origen + " · " + fechaRegreso + "</html>");
         btnVolverIda.setVisible(true);
         btnComprar.setText("Comprar Tiquete");
         btnComprar.setPreferredSize(new Dimension(180, 42));
@@ -798,72 +756,44 @@ public class FrmPrincipal extends JFrame {
 
     private void volverSeleccionIda() {
         if (!chkIdaVuelta.isSelected()) return;
-
-        vueloIdaSeleccionado = null;
-        faseSeleccionRegreso = false;
-
-        lblPasoInfo.setText("Paso 1 de 2: Seleccione el vuelo de ida");
-        lblResumenIda.setText("");
-        btnVolverIda.setVisible(false);
-        btnComprar.setText("Seleccionar vuelo de ida →");
-        btnComprar.setPreferredSize(new Dimension(210, 42));
-
-        if (!vuelosIdaCache.isEmpty()) {
-            mostrarLista(vuelosIdaCache);
-        }
+        vueloIdaSeleccionado = null; faseSeleccionRegreso = false;
+        lblPasoInfo.setText("Paso 1 de 2: Seleccione el vuelo de ida"); lblResumenIda.setText(""); btnVolverIda.setVisible(false);
+        btnComprar.setText("Seleccionar vuelo de ida →"); btnComprar.setPreferredSize(new Dimension(210, 42));
+        if (!vuelosIdaCache.isEmpty()) mostrarLista(vuelosIdaCache);
     }
 
     private void actualizarUIParaFase() {
         if (chkIdaVuelta.isSelected() && !faseSeleccionRegreso) {
-            btnComprar.setText("Seleccionar vuelo de ida →");
-            btnComprar.setPreferredSize(new Dimension(210, 42));
+            btnComprar.setText("Seleccionar vuelo de ida →"); btnComprar.setPreferredSize(new Dimension(210, 42));
         } else {
-            btnComprar.setText("Comprar Tiquete");
-            btnComprar.setPreferredSize(new Dimension(180, 42));
+            btnComprar.setText("Comprar Tiquete"); btnComprar.setPreferredSize(new Dimension(180, 42));
         }
         panelFase.setVisible(chkIdaVuelta.isSelected());
     }
 
-    // ============ COMPRA ============
     private void procesarCompra(int idVueloIda, Integer idVueloRegreso) {
-        int adultos = (int) spnAdultos.getValue();
-        int ninos = (int) spnNinos.getValue();
-        int infantes = (int) spnInfantes.getValue();
+        int adultos = (int) spnAdultos.getValue(); int ninos = (int) spnNinos.getValue(); int infantes = (int) spnInfantes.getValue();
         String clase = (String) cmbClase.getSelectedItem();
-
         ReservaService rs = new ReservaService();
-        String pnr = rs.iniciarReserva(idVueloIda, idVueloRegreso, clase,
-                                        adultos, ninos, infantes);
+        String pnr = rs.iniciarReserva(idVueloIda, idVueloRegreso, clase, adultos, ninos, infantes);
 
         if (pnr == null) {
-            JOptionPane.showMessageDialog(this,
-                    "No se pudo iniciar la reserva.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No se pudo iniciar la reserva.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-
-        FrmCompra fc = new FrmCompra(this, idVueloIda, idVueloRegreso, clase, pnr,
-                                      adultos, ninos, infantes);
+        FrmCompra fc = new FrmCompra(this, idVueloIda, idVueloRegreso, clase, pnr, adultos, ninos, infantes);
         fc.setVisible(true);
-
-        if (chkIdaVuelta.isSelected()) {
-            volverSeleccionIda();
-        }
+        if (chkIdaVuelta.isSelected()) volverSeleccionIda();
         buscarVuelos();
     }
 
-    // ============ DETALLES DEL VUELO ============
     private void mostrarDetalles() {
         int fila = tablaVuelos.getSelectedRow();
         if (fila == -1) {
-            txtDetalles.setText("<html><body style='font-family:Segoe UI; padding:8px; color:#6B6B6B;'>"
-                    + "<i>Seleccione un vuelo para ver sus detalles y restricciones tarifarias.</i>"
-                    + "</body></html>");
+            txtDetalles.setText("<html><body style='font-family:Segoe UI; padding:8px; color:#6B6B6B;'><i>Seleccione un vuelo para ver sus detalles y restricciones tarifarias.</i></body></html>");
             return;
         }
-
-        int idVuelo = ((Number) modeloTabla.getValueAt(fila,
-                tablaVuelos.getColumnModel().getColumnIndex("ID"))).intValue();
+        int idVuelo = ((Number) modeloTabla.getValueAt(fila, tablaVuelos.getColumnModel().getColumnIndex("ID"))).intValue();
         Vuelo v = vueloDAO.buscarPorId(idVuelo);
         if (v == null) return;
 
@@ -872,33 +802,13 @@ public class FrmPrincipal extends JFrame {
         double precioFinal = v.getTarifaBase() * factorClase;
         String restricciones = obtenerRestricciones(clase);
 
-        String html = "<html><body style='font-family:Segoe UI; padding:10px; color:#1A1A1A;'>"
-            + "<table style='width:100%; border-collapse:collapse;'>"
-            + "<tr>"
-            + "<td style='width:50%; vertical-align:top; padding-right:15px;'>"
-            + "<b style='color:#C8102E; font-size:13px;'>Información operacional</b><br><br>"
-            + "<b>Vuelo:</b> " + v.getNumeroVuelo() + "<br>"
-            + "<b>Ruta:</b> " + v.getOrigenCiudad() + " (" + v.getOrigenIata() + ") → "
-            + v.getDestinoCiudad() + " (" + v.getDestinoIata() + ")<br>"
-            + "<b>Salida:</b> " + v.getFechaSalida() + "<br>"
-            + "<b>Llegada:</b> " + v.getFechaLlegada() + "<br>"
-            + "<b>Duración:</b> " + v.getDuracion() + "<br>"
-            + "<b>Escalas:</b> " + v.getTextoEscalas() + "<br>"
-            + "<b>Aeronave:</b> " + v.getMatriculaAeronave()
-            + " (" + v.getCapacidadAeronave() + " pasajeros)<br>"
-            + "<b>Estado:</b> " + v.getEstadoVuelo() + "<br>"
-            + "<b>Cupos disponibles:</b> " + v.getCuposDisponibles() + "<br>"
-            + "</td>"
-            + "<td style='width:50%; vertical-align:top; padding-left:15px; border-left:1px solid #D5CFC0;'>"
-            + "<b style='color:#C8102E; font-size:13px;'>Tarifa y restricciones (" + clase + ")</b><br><br>"
-            + "<b>Tarifa base:</b> $ " + String.format("%,.0f", v.getTarifaBase()) + "<br>"
-            + "<b>Factor clase:</b> ×" + factorClase + "<br>"
-            + "<b style='color:#15803D; font-size:14px;'>Precio final: $ "
-            + String.format("%,.0f", precioFinal) + "</b><br><br>"
-            + restricciones
-            + "</td>"
-            + "</tr></table>"
-            + "</body></html>";
+        String html = "<html><body style='font-family:Segoe UI; padding:10px; color:#1A1A1A;'><table style='width:100%; border-collapse:collapse;'><tr><td style='width:50%; vertical-align:top; padding-right:15px;'>"
+            + "<b style='color:#C8102E; font-size:13px;'>Información operacional</b><br><br><b>Vuelo:</b> " + v.getNumeroVuelo() + "<br><b>Ruta:</b> " + v.getOrigenCiudad() + " (" + v.getOrigenIata() + ") → " + v.getDestinoCiudad() + " (" + v.getDestinoIata() + ")<br>"
+            + "<b>Salida:</b> " + v.getFechaSalida() + "<br><b>Llegada:</b> " + v.getFechaLlegada() + "<br><b>Duración:</b> " + v.getDuracion() + "<br><b>Escalas:</b> " + v.getTextoEscalas() + "<br>"
+            + "<b>Aeronave:</b> " + v.getMatriculaAeronave() + " (" + v.getCapacidadAeronave() + " pasajeros)<br><b>Estado:</b> " + v.getEstadoVuelo() + "<br><b>Cupos disponibles:</b> " + v.getCuposDisponibles() + "<br>"
+            + "</td><td style='width:50%; vertical-align:top; padding-left:15px; border-left:1px solid #D5CFC0;'><b style='color:#C8102E; font-size:13px;'>Tarifa y restricciones (" + clase + ")</b><br><br>"
+            + "<b>Tarifa base:</b> $ " + String.format("%,.0f", v.getTarifaBase()) + "<br><b>Factor clase:</b> ×" + factorClase + "<br>"
+            + "<b style='color:#15803D; font-size:14px;'>Precio final: $ " + String.format("%,.0f", precioFinal) + "</b><br><br>" + restricciones + "</td></tr></table></body></html>";
 
         txtDetalles.setText(html);
         txtDetalles.setCaretPosition(0);
@@ -906,31 +816,9 @@ public class FrmPrincipal extends JFrame {
 
     private String obtenerRestricciones(String clase) {
         switch (clase) {
-            case "Ejecutiva":
-                return "<span style='color:#6B6B6B; font-size:11px;'>"
-                    + "• Cambios permitidos sin penalidad hasta 24h antes<br>"
-                    + "• Reembolso con penalidad del 10%<br>"
-                    + "• 2 maletas de 23 kg<br>"
-                    + "• Prioridad en embarque y abordaje preferencial<br>"
-                    + "• Asiento preferencial incluido"
-                    + "</span>";
-            case "Primera Clase":
-                return "<span style='color:#6B6B6B; font-size:11px;'>"
-                    + "• Cambios y cancelaciones sin penalidad<br>"
-                    + "• Reembolso 100%<br>"
-                    + "• 3 maletas de 32 kg<br>"
-                    + "• Acceso a sala VIP<br>"
-                    + "• Prioridad total y embarque exclusivo<br>"
-                    + "• Servicio a bordo premium"
-                    + "</span>";
-            default:
-                return "<span style='color:#6B6B6B; font-size:11px;'>"
-                    + "• Cambios permitidos con penalidad del 30%<br>"
-                    + "• No reembolsable<br>"
-                    + "• 1 maleta de 23 kg<br>"
-                    + "• Asiento estándar asignado<br>"
-                    + "• Equipaje de mano de 10 kg"
-                    + "</span>";
+            case "Ejecutiva": return "<span style='color:#6B6B6B; font-size:11px;'>• Cambios permitidos sin penalidad hasta 24h antes<br>• Reembolso con penalidad del 10%<br>• 2 maletas de 23 kg<br>• Prioridad en embarque y abordaje preferencial<br>• Asiento preferencial incluido</span>";
+            case "Primera Clase": return "<span style='color:#6B6B6B; font-size:11px;'>• Cambios y cancelaciones sin penalidad<br>• Reembolso 100%<br>• 3 maletas de 32 kg<br>• Acceso a sala VIP<br>• Prioridad total y embarque exclusivo<br>• Servicio a bordo premium</span>";
+            default: return "<span style='color:#6B6B6B; font-size:11px;'>• Cambios permitidos con penalidad del 30%<br>• No reembolsable<br>• 1 maleta de 23 kg<br>• Asiento estándar asignado<br>• Equipaje de mano de 10 kg</span>";
         }
     }
 
@@ -945,12 +833,18 @@ public class FrmPrincipal extends JFrame {
         } catch (Exception ignored) {}
 
         SwingUtilities.invokeLater(() -> {
-            FrmPrincipal v = new FrmPrincipal();
-            try {
-                java.net.URL urlIcono = FrmPrincipal.class.getResource("/logo.png");
-                if (urlIcono != null) v.setIconImage(new ImageIcon(urlIcono).getImage());
-            } catch (Exception ignored) {}
-            v.setVisible(true);
+            FrmLogin login = new FrmLogin(null, null);
+            login.setVisible(true);
+            
+            if (login.getUsuarioLogueado() != null) {
+                if ("ADMIN".equalsIgnoreCase(login.getUsuarioLogueado().getRol())) {
+                    new FrmAdmin().setVisible(true);
+                } else {
+                    new FrmPrincipal().setVisible(true);
+                }
+            } else {
+                System.exit(0);
+            }
         });
     }
 }

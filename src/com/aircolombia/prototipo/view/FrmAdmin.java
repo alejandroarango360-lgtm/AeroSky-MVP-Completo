@@ -28,13 +28,9 @@ public class FrmAdmin extends JFrame {
 
     private JTable tablaVuelos;
     private DefaultTableModel modeloTabla;
-    private JButton btnNuevo;
-    private JButton btnEditar;
-    private JButton btnEliminar;
-    private JButton btnRefrescar;
-    private JButton btnModificarVuelo; 
-    private JButton btnNotificarCancelacion; 
-    private JButton btnReportes; // NUEVO BOTÓN
+    private JButton btnNuevo, btnEditar, btnEliminar, btnRefrescar;
+    private JButton btnModificarVuelo, btnNotificarCancelacion, btnReportes;
+    private JButton btnGestionarUsuarios, btnCerrarSesion; // Nuevos botones
     
     private VueloDAO vueloDAO;
     private ReservaService reservaService;
@@ -49,8 +45,8 @@ public class FrmAdmin extends JFrame {
 
     private void initComponents() {
         setTitle("AeroSky - Módulo Administrador");
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(1250, 650); // Un poco más ancho para que quepan todos los botones
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Si cierran la ventana, se cierra el programa
+        setSize(1450, 650); // Más ancho para que quepan todos los botones
         setLayout(new BorderLayout());
         getContentPane().setBackground(FONDO);
 
@@ -106,21 +102,23 @@ public class FrmAdmin extends JFrame {
         btnNuevo = crearBoton("+ Nuevo Vuelo", PRINCIPAL, PRINCIPAL_HOVER, Color.WHITE);
         btnNuevo.setPreferredSize(new Dimension(140, 40));
         
-        btnEditar = crearBoton("Editar", GRIS_BTN, GRIS_BTN_HOVER, TEXTO);
-        btnEditar.setPreferredSize(new Dimension(90, 40));
+        btnEditar = crearBoton("Editar Vuelo", GRIS_BTN, GRIS_BTN_HOVER, TEXTO);
+        btnEditar.setPreferredSize(new Dimension(110, 40));
         
-        btnEliminar = crearBoton("Eliminar", ROJO_PELIGRO, ROJO_PELIGRO_HOVER, Color.WHITE);
-        btnEliminar.setPreferredSize(new Dimension(90, 40));
+        btnEliminar = crearBoton("Eliminar Vuelo", ROJO_PELIGRO, ROJO_PELIGRO_HOVER, Color.WHITE);
+        btnEliminar.setPreferredSize(new Dimension(120, 40));
         
-        btnModificarVuelo = crearBoton("Modificar Vuelo (Cliente)", new Color(0x15803D), new Color(0x166534), Color.WHITE);
+        btnModificarVuelo = crearBoton("Cambiar Vuelo (Cliente)", new Color(0x15803D), new Color(0x166534), Color.WHITE);
         btnModificarVuelo.setPreferredSize(new Dimension(190, 40));
         
         btnNotificarCancelacion = crearBoton("Notificar Operación", new Color(0x6B21A8), new Color(0x581C87), Color.WHITE);
         btnNotificarCancelacion.setPreferredSize(new Dimension(160, 40));
 
-        // BOTÓN DE REPORTES
-        btnReportes = crearBoton("Ver Reportes (Gerencia)", new Color(0x0369A1), new Color(0x075985), Color.WHITE);
-        btnReportes.setPreferredSize(new Dimension(180, 40));
+        btnReportes = crearBoton("Ver Reportes", new Color(0x0369A1), new Color(0x075985), Color.WHITE);
+        btnReportes.setPreferredSize(new Dimension(130, 40));
+
+        btnGestionarUsuarios = crearBoton("Gestionar Usuarios", new Color(0xD97706), new Color(0xB45309), Color.WHITE);
+        btnGestionarUsuarios.setPreferredSize(new Dimension(160, 40));
 
         panelIzq.add(btnNuevo);
         panelIzq.add(btnEditar);
@@ -129,12 +127,20 @@ public class FrmAdmin extends JFrame {
         panelIzq.add(btnModificarVuelo);
         panelIzq.add(btnNotificarCancelacion);
         panelIzq.add(btnReportes);
+        panelIzq.add(btnGestionarUsuarios);
 
-        JPanel panelDer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        JPanel panelDer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         panelDer.setBackground(FONDO);
+        
         btnRefrescar = crearBoton("Refrescar", GRIS_BTN, GRIS_BTN_HOVER, TEXTO);
         btnRefrescar.setPreferredSize(new Dimension(120, 40));
+        
+        // BOTÓN CERRAR SESIÓN
+        btnCerrarSesion = crearBoton("Cerrar Sesión", new Color(0xDC2626), new Color(0xB91C1C), Color.WHITE);
+        btnCerrarSesion.setPreferredSize(new Dimension(130, 40));
+        
         panelDer.add(btnRefrescar);
+        panelDer.add(btnCerrarSesion);
 
         panelBotones.add(panelIzq, BorderLayout.WEST);
         panelBotones.add(panelDer, BorderLayout.EAST);
@@ -142,6 +148,7 @@ public class FrmAdmin extends JFrame {
 
         add(contenedor, BorderLayout.CENTER);
 
+        // Eventos
         btnRefrescar.addActionListener(e -> cargarVuelos());
         btnNuevo.addActionListener(e -> abrirEditor(null));
         btnEditar.addActionListener(e -> {
@@ -152,22 +159,37 @@ public class FrmAdmin extends JFrame {
         
         btnModificarVuelo.addActionListener(e -> new FrmModificarVuelo(this).setVisible(true));
         btnNotificarCancelacion.addActionListener(e -> notificarCancelacionVuelo());
-        
-        // ACCIÓN DEL BOTÓN DE REPORTES
         btnReportes.addActionListener(e -> new FrmReportes().setVisible(true));
+        btnGestionarUsuarios.addActionListener(e -> new FrmGestionUsuarios(this).setVisible(true));
+        
+        // EVENTO CERRAR SESIÓN
+        btnCerrarSesion.addActionListener(e -> {
+            this.dispose();
+            FrmLogin login = new FrmLogin(null, null);
+            login.setVisible(true);
+            if (login.getUsuarioLogueado() != null) {
+                if ("ADMIN".equalsIgnoreCase(login.getUsuarioLogueado().getRol())) {
+                    new FrmAdmin().setVisible(true);
+                } else {
+                    new FrmPrincipal().setVisible(true);
+                }
+            } else {
+                System.exit(0);
+            }
+        });
     }
 
+    // ... (Los demás métodos: notificarCancelacionVuelo, cargarVuelos, obtenerVueloSeleccionado, abrirEditor, eliminarSeleccionado, crearBoton, estilizarTabla)
+    // Se mantienen exactamente iguales a tu versión anterior
+    // ... 
     private void notificarCancelacionVuelo() {
         String idStr = JOptionPane.showInputDialog(this, "Ingrese el ID del vuelo afectado por la operación:", "Notificar Cancelación", JOptionPane.WARNING_MESSAGE);
         if (idStr == null || idStr.trim().isEmpty()) return;
-
         String motivo = JOptionPane.showInputDialog(this, "Ingrese el motivo (Ej: Clima, Fallas técnicas, etc.):");
         if (motivo == null || motivo.trim().isEmpty()) return;
-
         try {
             int idVuelo = Integer.parseInt(idStr.trim());
             int notificados = reservaService.notificarCancelacionVuelo(idVuelo, motivo.trim());
-            
             if (notificados > 0) {
                 JOptionPane.showMessageDialog(this, "Se han enviado " + notificados + " correos a los pasajeros afectados.", "Notificación Exitosa", JOptionPane.INFORMATION_MESSAGE);
             } else {
@@ -197,9 +219,7 @@ public class FrmAdmin extends JFrame {
     private Vuelo obtenerVueloSeleccionado() {
         int fila = tablaVuelos.getSelectedRow();
         if (fila == -1) {
-            JOptionPane.showMessageDialog(this,
-                    "Seleccione un vuelo de la tabla.",
-                    "Sin selección", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Seleccione un vuelo de la tabla.", "Sin selección", JOptionPane.WARNING_MESSAGE);
             return null;
         }
         int id = (int) modeloTabla.getValueAt(fila, 0);
@@ -225,15 +245,10 @@ public class FrmAdmin extends JFrame {
 
         if (confirm == JOptionPane.YES_OPTION) {
             if (vueloDAO.eliminar(v.getIdVuelo())) {
-                JOptionPane.showMessageDialog(this,
-                        "Vuelo eliminado correctamente.",
-                        "Eliminación exitosa", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Vuelo eliminado correctamente.", "Eliminación exitosa", JOptionPane.INFORMATION_MESSAGE);
                 cargarVuelos();
             } else {
-                JOptionPane.showMessageDialog(this,
-                        "No se pudo eliminar el vuelo.\n"
-                        + "Es posible que tenga reservas asociadas.",
-                        "Error al eliminar", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "No se pudo eliminar el vuelo.\nEs posible que tenga reservas asociadas.", "Error al eliminar", JOptionPane.ERROR_MESSAGE);
             }
         }
     }

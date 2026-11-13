@@ -22,7 +22,7 @@ public class FrmCancelacion extends JDialog {
     private static final Color VERDE = new Color(0x15803D);
 
     private JTextField txtPNR;
-    private JTextField txtApellido; // NUEVO CAMPO RF-21
+    private JTextField txtApellido;
     private JButton btnBuscar;
     private JButton btnCancelarTiquete;
     private JButton btnCerrar;
@@ -39,7 +39,7 @@ public class FrmCancelacion extends JDialog {
     }
 
     private void initComponents() {
-        setSize(540, 660); // Ajusté un poco el alto para que quepa el nuevo campo
+        setSize(540, 680);
         setLayout(new BorderLayout());
         getContentPane().setBackground(Color.WHITE);
 
@@ -132,7 +132,7 @@ public class FrmCancelacion extends JDialog {
 
         btnBuscar.addActionListener(e -> buscarReserva());
         txtPNR.addActionListener(e -> buscarReserva());
-        txtApellido.addActionListener(e -> buscarReserva()); // Enter en apellido también busca
+        txtApellido.addActionListener(e -> buscarReserva());
         btnCancelarTiquete.addActionListener(e -> confirmarCancelacion());
         btnCerrar.addActionListener(e -> dispose());
     }
@@ -147,9 +147,9 @@ public class FrmCancelacion extends JDialog {
             return;
         }
 
-        // RF-21: Validar seguridad (PNR + Apellido)
+        // RF-21: Validar seguridad
         if (!reservaService.consultarReservaSegura(pnr, apellido)) {
-            JOptionPane.showMessageDialog(this, "El código PNR o el apellido no coinciden con nuestra base de datos.",
+            JOptionPane.showMessageDialog(this, "El código PNR o el apellido no coinciden.",
                     "Error de Seguridad", JOptionPane.ERROR_MESSAGE);
             limpiarInfo();
             return;
@@ -166,30 +166,29 @@ public class FrmCancelacion extends JDialog {
         String estado = (String) info[2];
 
         if ("Cancelada".equals(estado)) {
-            JOptionPane.showMessageDialog(this, "La reserva con PNR " + pnr + " ya fue cancelada.",
+            JOptionPane.showMessageDialog(this, "La reserva ya fue cancelada.",
                     "Reserva cancelada", JOptionPane.WARNING_MESSAGE);
             limpiarInfo();
             return;
         }
         if ("Expirada".equals(estado)) {
-            JOptionPane.showMessageDialog(this, "La reserva con PNR " + pnr + " ya expiró.",
+            JOptionPane.showMessageDialog(this, "La reserva ya expiró.",
                     "Reserva expirada", JOptionPane.WARNING_MESSAGE);
             limpiarInfo();
             return;
         }
         if (!"Confirmada".equals(estado)) {
-            JOptionPane.showMessageDialog(this,
-                    "La reserva no se puede cancelar.\nEstado actual: " + estado,
+            JOptionPane.showMessageDialog(this, "La reserva no se puede cancelar.\nEstado actual: " + estado,
                     "Estado no válido", JOptionPane.WARNING_MESSAGE);
             limpiarInfo();
             return;
         }
 
-        mostrarInfo(pnr);
+        mostrarInfo(pnr, estado);
         btnCancelarTiquete.setEnabled(true);
     }
 
-    private void mostrarInfo(String pnr) {
+    private void mostrarInfo(String pnr, String estadoTiquete) {
         Object[] info = reservaDAO.obtenerInfoReserva(pnr);
         if (info == null) {
             panelInfo.setVisible(false);
@@ -197,6 +196,14 @@ public class FrmCancelacion extends JDialog {
         }
 
         panelInfo.removeAll();
+
+        // --- NUEVO: Mostrar Estado ---
+        JLabel lblEstado = new JLabel("ESTADO ACTUAL: " + estadoTiquete.toUpperCase());
+        lblEstado.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblEstado.setForeground(VERDE); // Si pasa la validación, es porque está Confirmada
+        lblEstado.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panelInfo.add(lblEstado);
+        panelInfo.add(Box.createRigidArea(new Dimension(0, 10)));
 
         String origen = (String) info[1];
         String destino = (String) info[2];
@@ -208,7 +215,6 @@ public class FrmCancelacion extends JDialog {
         String tipo = (String) info[8];
         if (clase == null) clase = ReservaService.CLASE_ECONOMICA;
 
-        // RN-07: penalidad
         double factorPenalidad = ReservaService.obtenerPenalidadCancelacion(clase);
         double penalidad = total * factorPenalidad;
         double reembolso = total - penalidad;
@@ -225,12 +231,8 @@ public class FrmCancelacion extends JDialog {
         panelInfo.add(crearFilaInfo("Fecha de ida:", fecha, false));
         panelInfo.add(Box.createRigidArea(new Dimension(0, 6)));
         panelInfo.add(crearFilaInfo("Clase:", clase, false));
-        panelInfo.add(Box.createRigidArea(new Dimension(0, 6)));
-        panelInfo.add(crearFilaInfo("Tipo de viaje:",
-                "Ida_Y_Vuelta".equals(tipo) ? "Ida y vuelta" : "Solo ida", false));
         panelInfo.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        // Desglose RN-07
         JLabel lblDesglose = new JLabel("<html><b style='color:#C8102E;'>Desglose de cancelación (RN-07)</b></html>");
         lblDesglose.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblDesglose.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -239,20 +241,10 @@ public class FrmCancelacion extends JDialog {
 
         panelInfo.add(crearFilaInfo("Total pagado:", "$ " + String.format("%,.0f", total), false));
         panelInfo.add(Box.createRigidArea(new Dimension(0, 4)));
-        panelInfo.add(crearFilaInfo("Penalidad (" + pct + "%):",
-                "-$ " + String.format("%,.0f", penalidad), false));
+        panelInfo.add(crearFilaInfo("Penalidad (" + pct + "%):", "-$ " + String.format("%,.0f", penalidad), false));
         panelInfo.add(Box.createRigidArea(new Dimension(0, 4)));
-        panelInfo.add(crearFilaInfoDestacada("Reembolso:",
-                "$ " + String.format("%,.0f", reembolso), VERDE));
-        panelInfo.add(Box.createRigidArea(new Dimension(0, 10)));
-
-        JLabel lblAviso = new JLabel("<html><i>La penalidad se aplica según la clase tarifaria "
-                + "adquirida. Al confirmar, la reserva queda cancelada y los cupos se liberan.</i></html>");
-        lblAviso.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblAviso.setForeground(new Color(0x6B6B6B));
-        lblAviso.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panelInfo.add(lblAviso);
-
+        panelInfo.add(crearFilaInfoDestacada("Reembolso:", "$ " + String.format("%,.0f", reembolso), VERDE));
+        
         panelInfo.setVisible(true);
         panelInfo.revalidate();
         panelInfo.repaint();
@@ -307,27 +299,47 @@ public class FrmCancelacion extends JDialog {
         String pnr = txtPNR.getText().trim().toUpperCase();
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "¿Está seguro de cancelar este tiquete?\n\n"
-                + "Se aplicará la penalidad según la clase (RN-07).\n"
-                + "Esta acción no se puede deshacer.",
+                "¿Está seguro de solicitar la cancelación de este tiquete?\n\n"
+                + "Por seguridad, le enviaremos un código a su correo electrónico para confirmar.\n"
+                + "Se aplicará la penalidad según la clase (RN-07).",
                 "Confirmar cancelación", JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
 
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        Object[] resultado = reservaService.cancelarTiqueteConDetalle(pnr);
+        // 1. Solicitar el código (envía el correo)
+        Object[] solicitud = reservaService.solicitarCodigoCancelacion(pnr);
+        
+        if (!(Boolean) solicitud[0]) {
+            JOptionPane.showMessageDialog(this, solicitud[1], "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JOptionPane.showMessageDialog(this, solicitud[1], "Correo Enviado", JOptionPane.INFORMATION_MESSAGE);
+
+        // 2. Pedir el código al usuario
+        String token = JOptionPane.showInputDialog(this, 
+                "Ingrese el código de 6 dígitos enviado a su correo:", 
+                "Verificación de Seguridad (2FA)", 
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (token == null || token.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Cancelación abortada. No se ingresó el código.", "Abortado", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // 3. Verificar el código y cancelar
+        Object[] resultado = reservaService.confirmarCancelacion(pnr, token.trim());
         boolean exito = (Boolean) resultado[0];
         String mensaje = (String) resultado[1];
 
         if (exito) {
-            JOptionPane.showMessageDialog(this, mensaje,
-                    "Cancelación exitosa", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, mensaje, "Cancelación exitosa", JOptionPane.INFORMATION_MESSAGE);
             limpiarInfo();
             txtPNR.setText("");
             txtApellido.setText("");
         } else {
-            JOptionPane.showMessageDialog(this, mensaje,
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, mensaje, "Error en la verificación", JOptionPane.ERROR_MESSAGE);
         }
     }
 

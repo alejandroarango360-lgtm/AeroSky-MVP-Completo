@@ -471,4 +471,47 @@ public class ReservaService {
         }
         return ok;
     }
+        // ==================== 2FA CANCELACIÓN ====================
+    public Object[] solicitarCodigoCancelacion(String pnr) {
+        Object[] info = reservaDAO.buscarPorPNR(pnr);
+        if (info == null) return new Object[]{false, "No existe la reserva."};
+        
+        String estado = (String) info[2];
+        if (!"Confirmada".equals(estado)) return new Object[]{false, "Solo se pueden cancelar reservas confirmadas."};
+
+        Object[] detalle = reservaDAO.obtenerInfoReserva(pnr);
+        if (detalle == null) return new Object[]{false, "No se encontró el correo del pasajero."};
+        
+        String correo = (String) detalle[6]; // El correo está en la posición 6
+        if (correo == null || correo.isEmpty()) return new Object[]{false, "El pasajero no tiene correo registrado."};
+
+        // Generar código de 6 dígitos y guardarlo
+        String token = String.format("%06d", new java.util.Random().nextInt(999999));
+        if (!reservaDAO.guardarTokenCancelacion(pnr, token)) {
+            return new Object[]{false, "Error interno al generar el código."};
+        }
+
+        // Enviar correo
+        boolean enviado = com.aircolombia.prototipo.utils.EmailService.enviarCodigoCancelacion(correo, pnr, token);
+        if (enviado) {
+            reservaDAO.auditarEvento(pnr, "CANCELACION_2FA_SOLICITADA", "OK", "Código enviado a " + correo);
+            return new Object[]{true, "Código enviado a " + correo};
+        } else {
+            return new Object[]{false, "Error al enviar el correo. Intenta de nuevo."};
+        }
+    }
+
+    public Object[] confirmarCancelacion(String pnr, String token) {
+        // 1. Validar el token
+        if (!reservaDAO.verificarTokenCancelacion(pnr, token)) {
+            reservaDAO.auditarEvento(pnr, "CANCELACION_2FA_FALLIDA", "RECHAZADO", "Token incorrecto.");
+            return new Object[]{false, "El código ingresado es incorrecto.", 0.0, 0.0, 0.0};
+        }
+
+        // 2. Limpiar token para que no se re-use
+        reservaDAO.limpiarTokenCancelacion(pnr);
+
+        // 3. Ejecutar la cancelación real (usando el método original que ya teníamos)
+        return cancelarTiqueteConDetalle(pnr);
+    }
 }
